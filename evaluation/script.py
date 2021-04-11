@@ -22,7 +22,7 @@ import numpy as np
 BLACK = False 
 WHITE = True
 
-NUM_PROCESSES = 10
+NUM_PROCESSES = 4
 dark_diagonals = list(range(7,58,7)) # [8, 15, 22, 29, 36, 43, 50, 57]
 light_diagonals = list(range(0,65,9)) # [1, 10, 19, 28, 37, 46, 55, 64]
 both_diagonals = dark_diagonals + light_diagonals
@@ -525,14 +525,14 @@ def populate(games, num_workers):
 
 start_time = time.time()
 df_pgn = pd.read_csv("chess_games.csv")
-# df_pgn = df_pgn.sample(1000)
+df_pgn = df_pgn.sample(1000)
 df_eval = populate(df_pgn, NUM_PROCESSES)
 time = time.time() - start_time
 print(time, "seconds")
 print(time // 60, "minutes")
 df_eval
 
-df_eval.to_csv("evaluations.csv", index=False)
+df_eval.to_csv("evaluations_TEST.csv", index=False)
 
 
 # In[9]:
