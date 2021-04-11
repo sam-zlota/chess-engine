@@ -12,7 +12,7 @@ import multiprocessing, os
 from IPython.display import SVG, display
 from tqdm import tqdm
 import numpy as np
-
+from sklearn.model_selection import train_test_split
 
 # ## Constants
 
@@ -374,7 +374,7 @@ def get_samples(pgn_string):
     
     num_moves = len(moves)
     
-    num_samples = num_moves // 2
+    num_samples = num_moves // 5
     
     samples = []
     sample_indices = random.sample(range(num_moves), k=num_samples)
@@ -392,17 +392,19 @@ def get_winner(pgn):
         Returns winner of this game or "Draw" if the game ended in a draw.
     """
     
-    start = pgn.index("Result") + 8
-    end = pgn.index("]", start) -1
-    result = pgn[start:end]
-    if result == "1-0":
-        return "White"
-    elif result == "0-1":
-        return "Black"
-    elif result == "1/2-1/2":
-        return "Draw"
-    else:
-        raise Exception("Bad result")
+    try:
+        start = pgn.index("Result") + 8
+        end = pgn.index("]", start) -1
+        result = pgn[start:end]
+        if result == "1-0":
+            return "White"
+        if result == "0-1":
+            return "Black"
+        if result == "1/2-1/2":
+            return "Draw"
+    
+    except:
+        return None
 
 def get_column_names():
     eval_funcs_white = [("W_" + ef.name) for ef in EVAL_FUNC_LIST]
@@ -471,7 +473,7 @@ def populate(games, num_workers):
                         eval_scores_white = evaluator.apply(board, WHITE)
                         eval_scores_black = evaluator.apply(board, BLACK)
                         eval_scores_diff = [eval_scores_white[i] - eval_scores_black[i] for i in range(len(eval_scores_black))]
-                        eval_scores_black = [-score for score in eval_scores_black]
+                       # eval_scores_black = [-score for score in eval_scores_black]
 
                         column_values.extend(eval_scores_white)
                         column_values.extend(eval_scores_diff)
@@ -489,6 +491,7 @@ def populate(games, num_workers):
                     else:
                         print("dup found")
             except Exception as inst:
+                print(inst)
                 continue
 #                     print(inst)  
 #                     print("Error", i)
@@ -524,15 +527,49 @@ def populate(games, num_workers):
 
 
 start_time = time.time()
-df_pgn = pd.read_csv("chess_games.csv")
-df_pgn = df_pgn.sample(1000)
-df_eval = populate(df_pgn, NUM_PROCESSES)
+df_pgn = pd.read_csv("./chess_games_2.csv")
+
+df_pgn = df_pgn.sample(100)
+#assert len(df_pgn) == 100000
+
+df_pgn["WINNER"] = df_pgn["pgn"].apply(get_winner)
+df_pgn = df_pgn.dropna()
+
+X = df_pgn["pgn"]
+y = df_pgn["WINNER"]
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, shuffle=True)
+
+
+print("Number of games: ", len(X_train) + len(X_test))
+
+df_eval_X_train = populate(X_train, NUM_PROCESSES)
+df_eval_X_train.to_csv("X_train.csv", index = False)
+print("\n\n************* X_train completed and saved ***************", len(df_eval_X_train))
+
+df_eval_X_test = populate(X_test, NUM_PROCESSES)
+df_eval_X_test.to_csv("X_test.csv", index=False)
+print("\n\n************ X_test completed and saved ****************", len(df_eval_X_test))
+
+
+#df_eval_y_train = populate(y_train, NUM_PROCESSES
+y_train.to_csv("y_train.csv", index=False)
+print("\n\n*********** y_train completed and saved ****************", len(y_train))
+
+
+#df_eval_y_test = populate(y_test, NUM_PROCESSES)
+y_test.to_csv("y_test.csv", index=False)
+print("*********DONE**********", len(y_test))
+
+
 time = time.time() - start_time
 print(time, "seconds")
 print(time // 60, "minutes")
-df_eval
+print(time // (60**2), "hours")
 
-df_eval.to_csv("evaluations_TEST.csv", index=False)
+
 
 
 # In[9]:
@@ -544,8 +581,6 @@ df_eval.to_csv("evaluations_TEST.csv", index=False)
 # In[12]:
 
 
-csv = pd.read_csv("evaluations.csv")
-
 
 # In[13]:
 
@@ -555,9 +590,6 @@ len(csv)
 
 # In[14]:
 
-
-csv.hist()
-plt.show()
 
 
 # In[ ]:
